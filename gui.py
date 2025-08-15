@@ -34,6 +34,53 @@ def draw_pieces(screen, board, square_size):
             img_key = color_prefix + piece.symbol().lower()
             screen.blit(IMAGES[img_key], (col*square_size, row*square_size))
 
+def draw_highlights(screen, selected_square, legal_moves, square_size):
+    if selected_square:
+        # Highlight the selected square
+        col = chess.square_file(chess.parse_square(selected_square))
+        row = 7 - chess.square_rank(chess.parse_square(selected_square))
+        pygame.draw.rect(
+            screen, pygame.Color("yellow"),
+            (col * square_size, row * square_size, square_size, square_size),
+            5  # Border thickness
+        )
+
+    for move_square in legal_moves:
+        # Highlight legal move squares
+        col = chess.square_file(move_square)
+        row = 7 - chess.square_rank(move_square)
+        pygame.draw.circle(
+            screen, pygame.Color("blue"),
+            (col * square_size + square_size // 2, row * square_size + square_size // 2),
+            square_size // 4  # Circle radius
+        )
+
+def draw_promotion_highlight(screen, promotion_square, square_size):
+    if promotion_square:
+        col = chess.square_file(promotion_square)
+        row = 7 - chess.square_rank(promotion_square)
+        pygame.draw.rect(
+            screen, pygame.Color("green"),
+            (col * square_size, row * square_size, square_size, square_size),
+            5  # Border thickness
+        )
+
+def draw_check_highlight(screen, king_square, square_size):
+    if king_square is not None:
+        col = chess.square_file(king_square)
+        row = 7 - chess.square_rank(king_square)
+        pygame.draw.rect(
+            screen, pygame.Color("red"),
+            (col * square_size, row * square_size, square_size, square_size),
+            5  # Border thickness
+        )
+
+def draw_message(screen, message, square_size):
+    font = pygame.font.Font(None, square_size)
+    text = font.render(message, True, pygame.Color("black"))
+    text_rect = text.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
+    screen.blit(text, text_rect)
+
 def get_square_under_mouse(square_size):
     mx, my = pygame.mouse.get_pos()
     col = mx // square_size
