@@ -43,11 +43,6 @@ An executable version is included for convenience.
 1. Ensure `main.exe` and the `assets/` folder are in the same directory.
 2. Double-click `main.exe` to run the game.
 
-## Controls
-
-* **Left click**: Select and move pieces.
-* **ESC**: Exit the game.
-
 ## Game Modes
 
 * Human vs. Human
