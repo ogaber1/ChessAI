@@ -33,7 +33,17 @@ def alpha_beta_search(board, depth, alpha=float('-inf'), beta=float('inf'), root
 
 
 def evaluate_board(board):
-    """Evaluate the board: positive for White, negative for Black, with positional heuristics."""
+    """Evaluate the board: positive for White, negative for Black, with checkmate/draw detection."""
+    # Checkmate detection
+    if board.is_checkmate():
+        # If it's checkmate and it's our turn, we lost
+        return -99999 if board.turn == chess.WHITE else 99999
+    # Draw detection
+    if (board.is_stalemate() or board.is_insufficient_material() or
+        board.is_seventyfive_moves() or board.is_fivefold_repetition() or
+        board.is_fifty_moves() or board.is_repetition()):
+        return 0
+
     piece_values = {
         chess.PAWN: 100,
         chess.KNIGHT: 320,
@@ -118,9 +128,11 @@ def evaluate_board(board):
     for square in chess.SQUARES:
         piece = board.piece_at(square)
         if piece:
-            # Mirror the table for black pieces
             table = tables[piece.piece_type]
             idx = square if piece.color == chess.WHITE else chess.square_mirror(square)
             sign = 1 if piece.color == chess.WHITE else -1
             value += sign * (piece_values[piece.piece_type] + table[idx])
+            # Favor giving check: if the *opponent* is in check, add a bonus
+            if board.is_check():
+                value += 50 if board.turn == chess.BLACK else -50
     return value
