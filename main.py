@@ -2,6 +2,7 @@ import chess
 import pygame
 from gui import draw_board, draw_pieces, get_square_under_mouse, draw_highlights, draw_promotion_highlight, draw_check_highlight, draw_message
 from chess_ai import random_agent, alpha_beta_search
+import time
 
 pygame.init()
 
@@ -73,31 +74,76 @@ else:
     black_agent = "random"
     black_depth = None
 
+white_moves = 0
+black_moves = 0
+
+start_time = time.time()  # Initialize the start time
+
 def check_game_over(board, screen, square_size):
-    if board.is_stalemate():
-        draw_message(screen, "Stalemate!", square_size)
-        pygame.display.flip()
-        pygame.time.wait(3000)  # Wait for 3 seconds
-        return True
-    elif board.is_checkmate():
+    font = pygame.font.Font(None, 34)
+    moves_msg = f"White moves: {white_moves}   Black moves: {black_moves}"
+    white_material, black_material = get_material_count(board)
+    material_msg = f"White material: {white_material}   Black material: {black_material}"
+    if board.is_checkmate():
         winner = "Black" if board.turn == chess.WHITE else "White"
-        draw_message(screen, f"Checkmate! {winner} wins!", square_size)
-        pygame.display.flip()
-        pygame.time.wait(3000)  # Wait for 3 seconds
-        return True
-    return False
+        message = f"Checkmate! {winner} wins!\n{moves_msg}\n{material_msg}"
+    elif board.is_stalemate():
+        message = f"Stalemate!\n{moves_msg}\n{material_msg}"
+    elif (board.is_fivefold_repetition() or board.is_seventyfive_moves() or
+          board.is_insufficient_material() or board.is_fifty_moves() or board.is_repetition()):
+        message = f"Draw!\n{moves_msg}\n{material_msg}"
+    else:
+        return False
+
+    # Draw the message (multi-line support)
+    screen.fill((200, 200, 200))
+    for i, line in enumerate(message.split('\n')):
+        text = font.render(line, True, (0, 0, 0))
+        rect = text.get_rect(center=(screen.get_width() // 2, 200 + i * 50))
+        screen.blit(text, rect)
+    pygame.display.flip()
+    pygame.time.wait(10000)
+    return True
+
+def get_material_count(board):
+    piece_values = {
+        chess.PAWN: 1,
+        chess.KNIGHT: 3,
+        chess.BISHOP: 3,
+        chess.ROOK: 5,
+        chess.QUEEN: 9,
+        chess.KING: 0
+    }
+    white_material = 0
+    black_material = 0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece:
+            value = piece_values[piece.piece_type]
+            if piece.color == chess.WHITE:
+                white_material += value
+            else:
+                black_material += value
+    return white_material, black_material
 
 while running:
-    if board.is_game_over():
-        if check_game_over(board, screen, SQUARE_SIZE):
-            running=False
-            continue  # Exit the main loop immediately
     draw_board(screen, SQUARE_SIZE)
     draw_pieces(screen, board, SQUARE_SIZE)
     draw_highlights(screen, selected_square, legal_moves, SQUARE_SIZE)
+
+    # Timer
+    elapsed = int(time.time() - start_time)
+    minutes = elapsed // 60
+    seconds = elapsed % 60
+    timer_text = f"Time: {minutes:02}:{seconds:02}"
+    font = pygame.font.Font(None, 28)
+    timer_surface = font.render(timer_text, True, (0, 0, 0))
+    screen.blit(timer_surface, (WIDTH - 150, 10))
+
     pygame.display.flip()
     clock.tick(30)
-    
+
+    # Handle quit event
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -107,13 +153,11 @@ while running:
             clicked_square = get_square_under_mouse(SQUARE_SIZE)
             if selected_square is None:
                 selected_square = clicked_square
-                # Get legal moves for the selected piece
                 legal_moves = [
                     move.to_square for move in board.legal_moves
                     if move.from_square == chess.parse_square(selected_square)
                 ]
             else:
-                # Prevent double-clicking the same square or invalid squares
                 if selected_square == clicked_square:
                     selected_square = None
                     legal_moves = []
@@ -122,11 +166,11 @@ while running:
                     move = chess.Move.from_uci(f"{selected_square}{clicked_square}")
                     if (board.piece_at(chess.parse_square(selected_square)).piece_type == chess.PAWN and
                         chess.square_rank(move.to_square) in [0, 7]):
-                        move.promotion = chess.QUEEN  # Promote to a queen
-                        print(f"Promotion move: {move}")
-                        draw_promotion_highlight(screen, move.to_square, SQUARE_SIZE)  # Highlight promotion square
+                        move.promotion = chess.QUEEN
+                        draw_promotion_highlight(screen, move.to_square, SQUARE_SIZE)
                     if move in board.legal_moves:
                         board.push(move)
+                        white_moves += 1
                         selected_square = None
                         legal_moves = []
                         if check_game_over(board, screen, SQUARE_SIZE):
@@ -136,13 +180,12 @@ while running:
                 except Exception as e:
                     print("Invalid move input:", e)
                 selected_square = None
-                legal_moves = []  # Clear legal moves after making a move
+                legal_moves = []
 
-    # White AI move
+    # AI moves (White)
     if white_agent != "human" and board.turn == chess.WHITE and running:
-        if board.is_game_over():
-            if check_game_over(board, screen, SQUARE_SIZE):
-                running = False
+        if check_game_over(board, screen, SQUARE_SIZE):
+            running = False
             continue
         if white_agent == "random":
             ai_move = random_agent(board)
@@ -150,17 +193,14 @@ while running:
             ai_move = alpha_beta_search(board, white_depth)
         if ai_move is not None and ai_move in board.legal_moves:
             board.push(ai_move)
-            if check_game_over(board, screen, SQUARE_SIZE):
-                running = False
-        else:
+            white_moves += 1
             if check_game_over(board, screen, SQUARE_SIZE):
                 running = False
 
-    # Black AI move
+    # AI moves (Black)
     if black_agent != "human" and board.turn == chess.BLACK and running:
-        if board.is_game_over():
-            if check_game_over(board, screen, SQUARE_SIZE):
-                running = False
+        if check_game_over(board, screen, SQUARE_SIZE):
+            running = False
             continue
         if black_agent == "random":
             ai_move = random_agent(board)
@@ -168,9 +208,8 @@ while running:
             ai_move = alpha_beta_search(board, black_depth)
         if ai_move is not None and ai_move in board.legal_moves:
             board.push(ai_move)
+            black_moves += 1
             if check_game_over(board, screen, SQUARE_SIZE):
                 running = False
-        else:
-            if check_game_over(board, screen, SQUARE_SIZE):
-                running = False
+
 pygame.quit()
