@@ -8,29 +8,47 @@ def random_agent(board):
         return None
     return random.choice(moves)
 
-def alpha_beta_search(board, depth, alpha=float('-inf'), beta=float('inf'), root=True):
-    if depth == 0 or board.is_game_over(): # Base case for recursion
-        return evaluate_board(board)
 
+def alpha_beta_minimax(board, depth, alpha, beta, maximizing_player):
+    if depth == 0 or board.is_game_over(): #base case for recursion
+        return evaluate_board(board), None
+
+    # Get all legal moves for the current player
     legal_moves = list(board.legal_moves)
-    if not legal_moves:  # No moves — game over
-        return None if root else evaluate_board(board) # Else may be Draw/Checkmate
+    if not legal_moves:
+        return evaluate_board(board), None
 
     best_move = None
-    for move in legal_moves:
-        board.push(move)
-        # Negate score for opponent's perspective, function is called recursively with depth - 1, and swap alpha and beta
-        score = -alpha_beta_search(board, depth - 1, -beta, -alpha, root=False) 
-        board.pop()
 
-        if score > alpha: # Maximizing player wants the highest score
-            alpha = score
-            best_move = move
+    # Move ordering
+    ordered_moves = order_moves(board, legal_moves)
 
-        if alpha >= beta:# Pruning Condition  
-            break
-
-    return best_move if root else alpha
+    if maximizing_player:
+        max_eval = float('-inf')
+        for move in ordered_moves:
+            board.push(move)
+            eval_score, _ = alpha_beta_minimax(board, depth - 1, alpha, beta, False)
+            board.pop()
+            if eval_score > max_eval:
+                max_eval = eval_score
+                best_move = move
+            alpha = max(alpha, eval_score)
+            if beta <= alpha:
+                break # Alpha-beta pruning
+        return max_eval, best_move
+    else:
+        min_eval = float('inf')
+        for move in ordered_moves:
+            board.push(move)
+            eval_score, _ = alpha_beta_minimax(board, depth - 1, alpha, beta, True)
+            board.pop()
+            if eval_score < min_eval:
+                min_eval = eval_score
+                best_move = move
+            beta = min(beta, eval_score)
+            if beta <= alpha: #Alpha-beta pruning
+                break
+        return min_eval, best_move
 
 
 def evaluate_board(board):
@@ -156,3 +174,25 @@ def is_piece_safe(board, square):
         if move.to_square == square:
             return False  # The piece is under attack
     return True
+
+def order_moves(board, moves):
+    #Order moves: captures and promotions first.
+    #optimization for alpha-beta pruning
+    def move_score(move):
+        score = 0
+        if board.is_capture(move):
+            score += 10
+        if move.promotion:
+            score += 5
+        return score
+    return sorted(moves, key=move_score, reverse=True)
+
+# Function to perform iterative deepening search
+# This function will call alpha-beta minimax with increasing depth limits
+def iterative_deepening(board, max_depth):
+    best_move = None
+    for depth in range(1, max_depth + 1):
+        _, move = alpha_beta_minimax(board, depth, float('-inf'), float('inf'), board.turn == chess.WHITE)
+        if move is not None:
+            best_move = move
+    return best_move
