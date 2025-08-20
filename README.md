@@ -45,9 +45,9 @@ An executable version is included for convenience.
 
 ## Game Modes
 
-* Human vs. Human
 * Human vs. Random AI
 * Human vs. Alpha-Beta AI
+* Random AI vs. Alpha-Beta AI
 
 ## Credits
 
