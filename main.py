@@ -6,11 +6,13 @@ import time
 
 pygame.init()
 
+# Constants for the game
 WIDTH, HEIGHT = 640, 640
 SQUARE_SIZE = WIDTH // 8
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Chess Agent Modes")
 
+# Function to display the mode selection screen
 def mode_selection_screen(screen, square_size):
     pygame.font.init()
     font = pygame.font.Font(None, 34)
@@ -37,6 +39,7 @@ def mode_selection_screen(screen, square_size):
                 for i in range(len(options)):
                     if 100 + i * 60 - 20 < my < 100 + i * 60 + 20:
                         return i + 1
+                    
 
 board = chess.Board()
 selected_square = None
@@ -47,38 +50,39 @@ clock = pygame.time.Clock()
 mode = mode_selection_screen(screen, SQUARE_SIZE)
 
 # Set up agents and depths based on mode
-if mode == 1:
+if mode == 1:  # Human vs Random Agent
     white_agent = "human"
     black_agent = "random"
     black_depth = None
-elif mode == 2:
+elif mode == 2: # Human vs Alpha-Beta Agent (easy)
+    white_agent = "human"
+    black_agent = "alpha"
+    black_depth = 3
+elif mode == 3: # Human vs Alpha-Beta Agent (hard)
     white_agent = "human"
     black_agent = "alpha"
     black_depth = 4
-elif mode == 3:
-    white_agent = "human"
-    black_agent = "alpha"
-    black_depth = 6
-elif mode == 4:
+elif mode == 4: # Alpha-Beta Agent vs Random Agent
     white_agent = "alpha"
-    white_depth = 4
+    white_depth = 3
     black_agent = "random"
     black_depth = None
-elif mode == 5:
+elif mode == 5: # Alpha-Beta Agent (easy) vs Alpha-Beta Agent (hard)
     white_agent = "alpha"
-    white_depth = 4
+    white_depth = 3
     black_agent = "alpha"
-    black_depth = 6
-else:
+    black_depth = 4
+else: # Invalid mode, default to Human vs Random Agent
     white_agent = "human"
     black_agent = "random"
     black_depth = None
 
+# Initialize move counters and timer
 white_moves = 0
 black_moves = 0
+start_time = time.time() 
 
-start_time = time.time()  # Initialize the start time
-
+# Function to check game over conditions and display messages
 def check_game_over(board, screen, square_size):
     font = pygame.font.Font(None, 34)
     moves_msg = f"White moves: {white_moves}   Black moves: {black_moves}"
@@ -105,6 +109,7 @@ def check_game_over(board, screen, square_size):
     pygame.time.wait(10000)
     return True
 
+# Function to get the material count for both players
 def get_material_count(board):
     piece_values = {
         chess.PAWN: 1,
@@ -126,7 +131,9 @@ def get_material_count(board):
                 black_material += value
     return white_material, black_material
 
+# Main game loop
 while running:
+    # Draw the board and pieces
     draw_board(screen, SQUARE_SIZE)
     draw_pieces(screen, board, SQUARE_SIZE)
     draw_highlights(screen, selected_square, legal_moves, SQUARE_SIZE)
@@ -143,21 +150,24 @@ while running:
     pygame.display.flip()
     clock.tick(30)
 
-    # Handle quit event
+    # Event handling, divided by agent type; Human or AI
     for event in pygame.event.get():
+        # Handle quit event
         if event.type == pygame.QUIT:
             running = False
 
         # Human move (White)
         elif event.type == pygame.MOUSEBUTTONDOWN and board.turn == chess.WHITE and white_agent == "human":
             clicked_square = get_square_under_mouse(SQUARE_SIZE)
-            if selected_square is None:
+            if selected_square is None: #No piece selected
+                # Clicked square is stored in selected_square and legal moves are calculated and added to legal_moves
                 selected_square = clicked_square
                 legal_moves = [
                     move.to_square for move in board.legal_moves
                     if move.from_square == chess.parse_square(selected_square)
                 ]
             else:
+                # double click on the same square deselects the piece instead of quitting
                 if selected_square == clicked_square:
                     selected_square = None
                     legal_moves = []
@@ -165,10 +175,12 @@ while running:
                 try:
                     move = chess.Move.from_uci(f"{selected_square}{clicked_square}")
                     if (board.piece_at(chess.parse_square(selected_square)).piece_type == chess.PAWN and
-                        chess.square_rank(move.to_square) in [0, 7]):
+                        chess.square_rank(move.to_square) in [0, 7]): # Promotion condition
+                        # If pawn reaches the last rank, promote it to a queen(auto promotion)
                         move.promotion = chess.QUEEN
                         draw_promotion_highlight(screen, move.to_square, SQUARE_SIZE)
-                    if move in board.legal_moves:
+                    if move in board.legal_moves:# Normal move
+                        # Push the move to the board and update the game state
                         board.push(move)
                         white_moves += 1
                         selected_square = None
@@ -176,9 +188,9 @@ while running:
                         if check_game_over(board, screen, SQUARE_SIZE):
                             running = False
                     else:
-                        print("Invalid move:", move)
+                        print("Invalid move:", move) # Invalid move 
                 except Exception as e:
-                    print("Invalid move input:", e)
+                    print("Invalid move input:", e) # Invalid move input (empty square to move))
                 selected_square = None
                 legal_moves = []
 
@@ -187,10 +199,14 @@ while running:
         if check_game_over(board, screen, SQUARE_SIZE):
             running = False
             continue
+
+        # Determine AI move based on agent type
         if white_agent == "random":
             ai_move = random_agent(board)
         elif white_agent == "alpha":
             ai_move = alpha_beta_search(board, white_depth)
+
+        # If a valid move is found, push it to the boar
         if ai_move is not None and ai_move in board.legal_moves:
             board.push(ai_move)
             white_moves += 1
