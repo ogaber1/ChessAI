@@ -1,7 +1,7 @@
 import chess
 import pygame
 from gui import draw_board, draw_pieces, get_square_under_mouse, draw_highlights, draw_promotion_highlight, draw_check_highlight, draw_message
-from chess_ai import random_agent, alpha_beta_search
+from chess_ai import random_agent, iterative_deepening
 import time
 
 pygame.init()
@@ -57,14 +57,14 @@ if mode == 1:  # Human vs Random Agent
 elif mode == 2: # Human vs Alpha-Beta Agent (easy)
     white_agent = "human"
     black_agent = "alpha"
-    black_depth = 3
+    black_depth = 4
 elif mode == 3: # Human vs Alpha-Beta Agent (hard)
     white_agent = "human"
     black_agent = "alpha"
-    black_depth = 4
+    black_depth = 5
 elif mode == 4: # Alpha-Beta Agent vs Random Agent
     white_agent = "alpha"
-    white_depth = 3
+    white_depth = 4
     black_agent = "random"
     black_depth = None
 elif mode == 5: # Alpha-Beta Agent (easy) vs Alpha-Beta Agent (hard)
@@ -204,7 +204,7 @@ while running:
         if white_agent == "random":
             ai_move = random_agent(board)
         elif white_agent == "alpha":
-            ai_move = alpha_beta_search(board, white_depth)
+            ai_move = iterative_deepening(board, white_depth)
 
         # If a valid move is found, push it to the boar
         if ai_move is not None and ai_move in board.legal_moves:
@@ -221,7 +221,7 @@ while running:
         if black_agent == "random":
             ai_move = random_agent(board)
         elif black_agent == "alpha":
-            ai_move = alpha_beta_search(board, black_depth)
+            ai_move = iterative_deepening(board, black_depth)
         if ai_move is not None and ai_move in board.legal_moves:
             board.push(ai_move)
             black_moves += 1
